@@ -1,6 +1,7 @@
 /**
 	This javascript object will get all the text for a CCD and put into a json object for easier parsability. 
 	@author Clayton Feathers
+	@method setCCDText
 
 	-----------------------------------
 	--- Documentation for Usability ---
@@ -12,12 +13,18 @@
 	2. Use that variable to access Allergies, Encounters, Immunizations, etc.
 
 	Example:
-	var ccdText = new CCDText().setCCD(msg);
+
+	var ccdText = new CCDText()
+	ccdText.setCCD(msg);
+	
 	channelMap.put('ccdText', ccdText);
-			
-	$('ccdText')['Allergies'][z]['Allergy']
-				   ^		 ^	    ^
-			     domain   index columnName
+
+
+	Then in proceding steps/code:
+	$('ccdText').getField('Allergies', z, 'Allergy')
+				   		 ^	     ^	  ^
+			     	   domain   index columnName
+	
 
 	Notes:
 	 - column name will change depending on the table headers for each component
@@ -39,7 +46,6 @@
 function CCDText() {
 	this.domains = {}; // domains are going to hold values; ex. text['Vitals'][z]['Vital Name']
 }
-
 
 // Returns and sets the json element for all the texts for each component in a ccd
 CCDText.prototype.setCCD = function(CCDTxt) {
@@ -78,6 +84,18 @@ CCDText.prototype.setCCD = function(CCDTxt) {
 	return this.domains;
 }
 
+CCDText.prototype.getField = function(domain, index, columnName) {
+	
+	var value = '';
+	try{
+		value = this.domains[domain][index][column];
+	}
+	catch(ex){}
+
+	return value;
+}
+
+
 function getTextForDomain(textStr){
 	
 	var text = new XML(textStr);
@@ -89,40 +107,51 @@ function getTextForDomain(textStr){
 	var values = [];
 
 	// Get headers and index
-	for each(var td in text.*::['thead'].*::['tr'][0].*::['td'])
-	{
-		jsonVariable[td.toString()] = index.toString()
-		jsonIndex[index.toString()] = td.toString()
-		index++;
-	}
-
-	// if not td then try th
-	if(isNullOrEmpty(text.*::['thead'].*::['tr'][0].*::['td']))
-	{
-		for each(var td in text.*::['thead'].*::['tr'][0].*::['th'])
+	try{
+			
+		if(!isNullOrEmpty(text.*::['thead'].*::['tr']))
 		{
-			jsonVariable[td.toString()] = index.toString()
-			jsonIndex[index.toString()] = td.toString()
-			index++;
-		}	
-	}
-
-	// Set the Values
-	for each(var tr in text.*::['tbody'].*::['tr'])
-	{
-		var jsonBody = {};
-		var i = 0;
-		for each(var td in tr.*::['td'])
-		{
-			var name = jsonIndex[i];
-			var value = td.toString();
-
-			jsonBody[name] = value;
-			i++;
+			for each(var td in text.*::['thead'].*::['tr'][0].*::['td'])
+			{
+				jsonVariable[td.toString()] = index.toString()
+				jsonIndex[index.toString()] = td.toString()
+				index++;
+			}
+		
+			// if not td then try th
+			if(isNullOrEmpty(text.*::['thead'].*::['tr'][0].*::['td']))
+			{
+				for each(var td in text.*::['thead'].*::['tr'][0].*::['th'])
+				{
+					jsonVariable[td.toString()] = index.toString()
+					jsonIndex[index.toString()] = td.toString()
+					index++;
+				}	
+			}
+		
+			// Set the Values
+			for each(var tr in text.*::['tbody'].*::['tr'])
+			{
+				var jsonBody = {};
+				var i = 0;
+				for each(var td in tr.*::['td'])
+				{
+					var name = jsonIndex[i];
+					var value = td.toString();
+		
+					jsonBody[name] = value;
+					i++;
+				}
+		
+				values.push(jsonBody);
+			}
 		}
-
-		values.push(jsonBody);
 	}
+	catch(ex)
+	{
+		logger.error('Could not parse CCD text for ' + textStr);
+	}
+	
 
 	return values;
 }
